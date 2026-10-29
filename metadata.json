@@ -1,0 +1,6 @@
+{
+  "name": "Ginhawa - Autonomous Development & Wellness Platform",
+  "description": "Production-grade on-demand wellness platform with customer booking, therapist operations, double-entry financial ledger, insurance fund, mobile simulator, and full 15-phase autonomous engineering workflow verification suite.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
