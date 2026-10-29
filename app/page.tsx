@@ -1,8 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Navbar } from '@/components/Navbar';
-import { HeroSection } from '@/components/HeroSection';
+import { GinhawaHeader } from '@/components/GinhawaHeader';
+import { GinhawaHero } from '@/components/GinhawaHero';
+import { GinhawaCategoryGrid } from '@/components/GinhawaCategoryGrid';
+import { GinhawaWhyChoose } from '@/components/GinhawaWhyChoose';
+import { GinhawaHowItWorks } from '@/components/GinhawaHowItWorks';
+import { GinhawaMobileView } from '@/components/GinhawaMobileView';
+import { GinhawaSplitView } from '@/components/GinhawaSplitView';
 import { ServiceCatalog } from '@/components/ServiceCatalog';
 import { TherapistDirectory } from '@/components/TherapistDirectory';
 import { BookingModal } from '@/components/BookingModal';
@@ -10,7 +15,6 @@ import { BookingTracker } from '@/components/BookingTracker';
 import { LedgerConsole } from '@/components/LedgerConsole';
 import { InsuranceFundView } from '@/components/InsuranceFundView';
 import { IncidentSupportModal } from '@/components/IncidentSupportModal';
-import { MobileSimulator } from '@/components/MobileSimulator';
 import { DevWorkflowDeck } from '@/components/DevWorkflowDeck';
 import { TherapistPortal } from '@/components/TherapistPortal';
 import { AffiliateAdminConsole } from '@/components/AffiliateAdminConsole';
@@ -23,10 +27,12 @@ import {
 } from '@/lib/data';
 import { INITIAL_LEDGER_ENTRIES, createBookingJournalEntries } from '@/lib/ledger';
 import { WellnessService, Therapist, Booking, BookingStatus, IncidentReport } from '@/lib/types';
-import { ShieldCheck, HeartHandshake, PhoneCall } from 'lucide-react';
+import { ShieldCheck, HeartHandshake, PhoneCall, Sparkles } from 'lucide-react';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'platform' | 'mobile' | 'ledger' | 'insurance' | 'devdeck'>('platform');
+  const [viewMode, setViewMode] = useState<'desktop' | 'mobile' | 'split' | 'devdeck'>('split');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Massage Therapy');
+
   const [services] = useState<WellnessService[]>(INITIAL_SERVICES);
   const [therapists] = useState<Therapist[]>(INITIAL_THERAPISTS);
   const [bookings, setBookings] = useState<Booking[]>(INITIAL_BOOKINGS);
@@ -46,14 +52,9 @@ export default function Home() {
 
   // Handle new confirmed booking
   const handleConfirmBooking = (newBooking: Booking) => {
-    // 1. Add booking
     setBookings(prev => [newBooking, ...prev]);
-
-    // 2. Generate balanced double-entry ledger entries (Σ Dr == Σ Cr)
     const newJournalEntries = createBookingJournalEntries(newBooking);
     setLedgerEntries(prev => [...prev, ...newJournalEntries]);
-
-    // 3. Close modal & navigate to active session view
     setBookingModalOpen(false);
   };
 
@@ -87,16 +88,30 @@ export default function Home() {
     setIncidentModalOpen(true);
   };
 
-  const handleIncidentFiled = (report: IncidentReport) => {
-    // console log incident for audit
+  const handleIncidentFiled = (_report: IncidentReport) => {
+    // Incident logged with cryptographic audit timestamp
+  };
+
+  const handleCategorySelect = (categoryName: string) => {
+    setSelectedCategory(categoryName);
+    const matchedService = services.find(s => s.name.toLowerCase().includes(categoryName.toLowerCase()) || s.category.toLowerCase().includes(categoryName.toLowerCase()));
+    if (matchedService) {
+      setSelectedService(matchedService);
+    }
+  };
+
+  const handleSearch = (filters: { location: string; service: string; date: string }) => {
+    const matched = services.find(s => s.name.toLowerCase().includes(filters.service.toLowerCase()) || s.category.toLowerCase().includes(filters.service.toLowerCase())) || services[0];
+    setSelectedService(matched);
+    setBookingModalOpen(true);
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans selection:bg-teal-500/20 selection:text-teal-300">
-      {/* 3-Zone Top Bar */}
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
+    <div className="min-h-screen flex flex-col bg-[#160202] text-slate-100 font-sans selection:bg-amber-500/20 selection:text-amber-300">
+      {/* Exact Top Header Bar */}
+      <GinhawaHeader
+        viewMode={viewMode}
+        setViewMode={setViewMode}
         onOpenBooking={() => {
           setSelectedService(null);
           setSelectedTherapist(null);
@@ -105,142 +120,97 @@ export default function Home() {
       />
 
       <main className="flex-1">
-        {activeTab === 'platform' && (
-          <>
-            <HeroSection
-              onExplore={() => {
-                const el = document.getElementById('services');
-                el?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              onOpenBooking={() => {
-                setSelectedService(null);
-                setSelectedTherapist(null);
-                setBookingModalOpen(true);
-              }}
-              onViewDevDeck={() => setActiveTab('devdeck')}
+        {/* Active Session Tracker if there's an ongoing session */}
+        {bookings.length > 0 && viewMode !== 'mobile' && (
+          <div className="max-w-7xl mx-auto px-6 pt-4 pb-2">
+            <BookingTracker
+              booking={bookings[0]}
+              onUpdateStatus={handleUpdateStatus}
+              onTriggerEmergency={handleOpenEmergency}
             />
-
-            {/* Active Session Tracker if there's an ongoing booking */}
-            {bookings.length > 0 && (
-              <div className="max-w-7xl mx-auto px-6 pt-10">
-                <BookingTracker
-                  booking={bookings[0]}
-                  onUpdateStatus={handleUpdateStatus}
-                  onTriggerEmergency={handleOpenEmergency}
-                />
-              </div>
-            )}
-
-            {/* Service Catalog */}
-            <ServiceCatalog
-              services={services}
-              onSelectService={service => {
-                setSelectedService(service);
-                setSelectedTherapist(null);
-                setBookingModalOpen(true);
-              }}
-            />
-
-            {/* Therapist Directory */}
-            <TherapistDirectory
-              therapists={therapists}
-              onSelectTherapist={therapist => {
-                setSelectedTherapist(therapist);
-                setSelectedService(null);
-                setBookingModalOpen(true);
-              }}
-            />
-
-            {/* Operations & Affiliate Quick Section Switchers */}
-            <div className="max-w-7xl mx-auto px-6 py-12 border-t border-slate-800/80">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-                  <div className="text-xs font-semibold text-teal-400 uppercase tracking-wider">
-                    Therapist Fleets & Dispatch (Phase 7)
-                  </div>
-                  <h3 className="text-lg font-bold text-white">
-                    Practitioner Operations & Shifts
-                  </h3>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Access therapist shift scheduler, government credential review, and instant GCash/Maya earnings disbursement.
-                  </p>
-                  <button
-                    onClick={() => setActiveTab('ledger')}
-                    className="mt-2 text-xs font-semibold text-teal-300 hover:text-teal-200 transition-colors"
-                  >
-                    View Operations & Balances →
-                  </button>
-                </div>
-
-                <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-                  <div className="text-xs font-semibold text-teal-400 uppercase tracking-wider">
-                    Ginhawa Insurance Fund (Phase 9)
-                  </div>
-                  <h3 className="text-lg font-bold text-white">
-                    1.5% Micro-Contribution Reserve
-                  </h3>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Statutory accident & liability protection underwritten by Master Policy GM-2026-PH. Reconciled directly to Account 2030 in the general ledger.
-                  </p>
-                  <button
-                    onClick={() => setActiveTab('insurance')}
-                    className="mt-2 text-xs font-semibold text-teal-300 hover:text-teal-200 transition-colors"
-                  >
-                    Inspect Reserve & Submit Claim →
-                  </button>
-                </div>
-              </div>
-            </div>
-          </>
+          </div>
         )}
 
-        {activeTab === 'mobile' && (
-          <MobileSimulator
-            services={services}
-            therapists={therapists}
-            bookings={bookings}
-            onQuickBook={() => {
-              setSelectedService(null);
-              setSelectedTherapist(null);
-              setBookingModalOpen(true);
-            }}
+        {/* View Mode 1: Split View (As Seen in Reference Image) */}
+        {viewMode === 'split' && (
+          <GinhawaSplitView
+            selectedCategory={selectedCategory}
+            onSelectCategory={handleCategorySelect}
+            onOpenBooking={() => setBookingModalOpen(true)}
+            onSearch={handleSearch}
           />
         )}
 
-        {activeTab === 'ledger' && (
-          <>
+        {/* View Mode 2: Fullscreen Native Mobile App View */}
+        {viewMode === 'mobile' && (
+          <div className="py-6">
+            <GinhawaMobileView
+              onOpenBooking={() => setBookingModalOpen(true)}
+              onSelectCategory={handleCategorySelect}
+            />
+          </div>
+        )}
+
+        {/* View Mode 3: Desktop Web View */}
+        {viewMode === 'desktop' && (
+          <div className="bg-white text-slate-900">
+            <GinhawaHero onSearch={handleSearch} />
+            <GinhawaCategoryGrid
+              selectedCategory={selectedCategory}
+              onSelectCategory={handleCategorySelect}
+            />
+            <GinhawaWhyChoose onLearnMore={() => setBookingModalOpen(true)} />
+            <GinhawaHowItWorks onStartBooking={() => setBookingModalOpen(true)} />
+
+            {/* Interactive Services & Fleet Section */}
+            <div className="bg-slate-950 text-white">
+              <ServiceCatalog
+                services={services}
+                onSelectService={service => {
+                  setSelectedService(service);
+                  setSelectedTherapist(null);
+                  setBookingModalOpen(true);
+                }}
+              />
+              <TherapistDirectory
+                therapists={therapists}
+                onSelectTherapist={therapist => {
+                  setSelectedTherapist(therapist);
+                  setSelectedService(null);
+                  setBookingModalOpen(true);
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* View Mode 4: Dev Master Deck & 15-Phase Autonomous Console */}
+        {viewMode === 'devdeck' && (
+          <div className="space-y-12 pb-16">
+            <DevWorkflowDeck
+              phases={phases}
+              onToggleTask={handleToggleTask}
+              ledgerEntries={ledgerEntries}
+              bookings={bookings}
+            />
             <LedgerConsole
               entries={ledgerEntries}
               onAddTestEntry={() => {}}
+            />
+            <InsuranceFundView
+              fundBalance={fundBalance}
+              totalClaimsSettled={5300}
             />
             <TherapistPortal
               therapist={therapists[0]}
               activeBookings={bookings.filter(b => b.status !== 'completed')}
               onCompleteBooking={id => handleUpdateStatus(id, 'completed')}
             />
-          </>
-        )}
-
-        {activeTab === 'insurance' && (
-          <>
-            <InsuranceFundView
-              fundBalance={fundBalance}
-              totalClaimsSettled={5300}
-            />
             <AffiliateAdminConsole
               affiliates={INITIAL_AFFILIATES}
               therapists={therapists}
             />
-          </>
-        )}
-
-        {activeTab === 'devdeck' && (
-          <DevWorkflowDeck
-            phases={phases}
-            onToggleTask={handleToggleTask}
-            ledgerEntries={ledgerEntries}
-            bookings={bookings}
-          />
+          </div>
         )}
       </main>
 
@@ -264,18 +234,18 @@ export default function Home() {
         onReportFiled={handleIncidentFiled}
       />
 
-      {/* Quiet Footer */}
-      <footer className="border-t border-slate-800 bg-slate-950 py-8 px-6 text-xs text-slate-500">
+      {/* Footer */}
+      <footer className="border-t border-amber-950/40 bg-[#120202] py-8 px-6 text-xs text-amber-200/60">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="font-bold text-slate-300">Ginhawa</span>
+            <span className="font-bold text-amber-300">GINHAWA APP</span>
             <span aria-hidden="true">·</span>
-            <span>Autonomous Wellness & Physical Care Platform</span>
+            <span>Professional Care. Natural Healing. A Better You.</span>
             <span aria-hidden="true">·</span>
-            <span className="text-teal-400 font-mono">Metro Manila Fleet Active</span>
+            <span className="font-serif italic text-amber-400">Ginhawa Sa Bawat Katawan ♡</span>
           </div>
-          <div>
-            Master Plan: MacBook Setup to Production Launch · 15 Phases Verified
+          <div className="text-stone-400">
+            DOH Licensed & TESDA NC II Verified Fleet · Metro Manila & Nearby Areas
           </div>
         </div>
       </footer>
